@@ -1,0 +1,32 @@
+name: deploy
+on:
+  push:
+    branches:
+      - main
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+jobs:
+  validate:
+    uses: ./.github/workflows/pull_request.yml
+    secrets: inherit
+  deploy-stage:
+    if: github.repository != 'ZenobeEnergy/typescript-ecs-template'
+    needs:
+      - validate
+    uses: ./.github/workflows/deploy_to_env.yml
+    with:
+      environment: stage
+    secrets: inherit
+  deploy-prod:
+    if: github.repository != 'ZenobeEnergy/typescript-ecs-template'
+    needs:
+      - deploy-stage
+    uses: ./.github/workflows/deploy_to_env.yml
+    with:
+      environment: live
+    secrets: inherit

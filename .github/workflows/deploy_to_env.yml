@@ -1,0 +1,36 @@
+name: deploy_to_env
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        type: string
+        required: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+      - name: Configure OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy to AWS
+        run: npx cdk --require-approval never deploy
+        env:
+          REPO_URL: ${{github.server_url}}/${{github.repository}}
+          BUILD_VERSION: 1.${{github.sha}}
+          DEPLOY_STAGE: ${{ inputs.environment }}
+          CDK_DEFAULT_ACCOUNT: ${{ vars.CDK_DEFAULT_ACCOUNT }}
+          CDK_DEFAULT_REGION: ${{ vars.CDK_DEFAULT_REGION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
